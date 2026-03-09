@@ -56,22 +56,46 @@ const outlineList = document.createElement('div');
 outlineList.id = 'gpt-outline-list';
 outlinePanel.appendChild(outlineList);
 
-const outlineResize = document.createElement('div');
-outlineResize.id = 'gpt-outline-resize';
+const outlineControls = document.createElement('div');
+outlineControls.id = 'gpt-outline-controls';
 
+const widthRow = document.createElement('div');
+widthRow.className = 'gpt-outline-ctrl-row';
+const widthLabel = document.createElement('span');
+widthLabel.className = 'gpt-outline-ctrl-label';
+widthLabel.textContent = '宽度:';
 const outlineShrink = document.createElement('button');
 outlineShrink.className = 'gpt-outline-resize-btn';
 outlineShrink.title = '缩小大纲';
 outlineShrink.textContent = '\u2212';
-
 const outlineGrow = document.createElement('button');
 outlineGrow.className = 'gpt-outline-resize-btn';
 outlineGrow.title = '放大大纲';
 outlineGrow.textContent = '+';
+widthRow.appendChild(widthLabel);
+widthRow.appendChild(outlineShrink);
+widthRow.appendChild(outlineGrow);
 
-outlineResize.appendChild(outlineShrink);
-outlineResize.appendChild(outlineGrow);
-outlinePanel.appendChild(outlineResize);
+const levelRow = document.createElement('div');
+levelRow.className = 'gpt-outline-ctrl-row';
+const levelLabel = document.createElement('span');
+levelLabel.className = 'gpt-outline-ctrl-label';
+levelLabel.textContent = '层级:';
+const levelShrink = document.createElement('button');
+levelShrink.className = 'gpt-outline-resize-btn';
+levelShrink.title = '减少显示层级';
+levelShrink.textContent = '\u2212';
+const levelGrow = document.createElement('button');
+levelGrow.className = 'gpt-outline-resize-btn';
+levelGrow.title = '增加显示层级';
+levelGrow.textContent = '+';
+levelRow.appendChild(levelLabel);
+levelRow.appendChild(levelShrink);
+levelRow.appendChild(levelGrow);
+
+outlineControls.appendChild(widthRow);
+outlineControls.appendChild(levelRow);
+outlinePanel.appendChild(outlineControls);
 
 document.body.appendChild(sidebar);
 document.body.appendChild(floatControls);
@@ -82,6 +106,12 @@ const OUTLINE_WIDTH_KEY = 'gpt-outline-width-pct';
 const OUTLINE_WIDTH_MIN = 8;
 const OUTLINE_WIDTH_MAX = 40;
 let _outlineWidthPercent = parseInt(localStorage.getItem(OUTLINE_WIDTH_KEY)) || 20;
+
+const OUTLINE_LEVEL_KEY = 'gpt-outline-max-level';
+const OUTLINE_LEVEL_MIN = 0;
+const OUTLINE_LEVEL_MAX = 5;
+let _outlineMaxLevel = parseInt(localStorage.getItem(OUTLINE_LEVEL_KEY));
+if (isNaN(_outlineMaxLevel)) _outlineMaxLevel = OUTLINE_LEVEL_MAX;
 
 toggleBtn.addEventListener('click', (event) => {
     event.stopPropagation();
@@ -117,6 +147,20 @@ outlineGrow.addEventListener('click', (e) => {
     _outlineWidthPercent = Math.min(OUTLINE_WIDTH_MAX, _outlineWidthPercent + 1);
     localStorage.setItem(OUTLINE_WIDTH_KEY, String(_outlineWidthPercent));
     updatePositions();
+});
+
+levelShrink.addEventListener('click', (e) => {
+    e.stopPropagation();
+    _outlineMaxLevel = Math.max(OUTLINE_LEVEL_MIN, _outlineMaxLevel - 1);
+    localStorage.setItem(OUTLINE_LEVEL_KEY, String(_outlineMaxLevel));
+    updateOutline();
+});
+
+levelGrow.addEventListener('click', (e) => {
+    e.stopPropagation();
+    _outlineMaxLevel = Math.min(OUTLINE_LEVEL_MAX, _outlineMaxLevel + 1);
+    localStorage.setItem(OUTLINE_LEVEL_KEY, String(_outlineMaxLevel));
+    updateOutline();
 });
 
 function getScrollContainer(element) {
@@ -343,6 +387,7 @@ function updateOutline() {
     headings.forEach(heading => {
         const level = parseInt(heading.tagName[1]);
         const rel = level - minLevel;
+        if (rel > _outlineMaxLevel) return;
 
         const item = document.createElement('div');
         item.className = `gpt-outline-item gpt-outline-level-${rel}`;

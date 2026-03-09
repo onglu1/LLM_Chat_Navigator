@@ -293,10 +293,24 @@ html.dark {
     color: var(--outline-level0-color);
 }
 
-#gpt-outline-resize {
+#gpt-outline-controls {
     display: flex;
+    flex-direction: column;
     gap: 4px;
     margin-top: 6px;
+}
+
+.gpt-outline-ctrl-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.gpt-outline-ctrl-label {
+    font-size: 11px;
+    color: var(--outline-resize-color);
+    white-space: nowrap;
+    min-width: 28px;
 }
 
 .gpt-outline-resize-btn {
