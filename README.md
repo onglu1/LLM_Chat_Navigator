@@ -1,4 +1,4 @@
-# ChatGPT Prompt Sidebar
+# ChatGPT Scrollmap
 
 一个 Chrome 扩展，在 ChatGPT 页面右侧添加侧边栏，展示当前对话中的所有提示词（Prompt），方便快速浏览和跳转。
 

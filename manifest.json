@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "ChatGPT Prompt Sidebar",
+    "name": "ChatGPT ScrollMap",
     "version": "1.1",
-    "description": "在侧边栏显示所有的提示词",
+    "description": "ChatGPT 导航增强：Prompt 侧边栏、回复大纲及快速跳转",
     "content_scripts": [
         {
             "matches": [
