@@ -19,7 +19,7 @@
     "icons": {
         "16": "icons/icon16.png",
         "24": "icons/icon24.png",
-        "32": "icons/icon42.png",
+        "32": "icons/icon32.png",
         "48": "icons/icon48.png"
     },
     "action": {
