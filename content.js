@@ -56,24 +56,42 @@ const outlineList = document.createElement('div');
 outlineList.id = 'gpt-outline-list';
 outlinePanel.appendChild(outlineList);
 
-const outlineEye = document.createElement('div');
-outlineEye.id = 'gpt-outline-eye';
-outlineEye.title = '折叠/展开大纲';
-outlineEye.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
-outlinePanel.appendChild(outlineEye);
+const outlineResize = document.createElement('div');
+outlineResize.id = 'gpt-outline-resize';
+
+const outlineShrink = document.createElement('button');
+outlineShrink.className = 'gpt-outline-resize-btn';
+outlineShrink.title = '缩小大纲';
+outlineShrink.textContent = '\u2212';
+
+const outlineGrow = document.createElement('button');
+outlineGrow.className = 'gpt-outline-resize-btn';
+outlineGrow.title = '放大大纲';
+outlineGrow.textContent = '+';
+
+outlineResize.appendChild(outlineShrink);
+outlineResize.appendChild(outlineGrow);
+outlinePanel.appendChild(outlineResize);
 
 document.body.appendChild(sidebar);
 document.body.appendChild(floatControls);
 document.body.appendChild(outlinePanel);
 
 let outlineVisible = true;
-let outlineCollapsed = false;
+const OUTLINE_WIDTH_KEY = 'gpt-outline-width-pct';
+const OUTLINE_WIDTH_MIN = 8;
+const OUTLINE_WIDTH_MAX = 40;
+let _outlineWidthPercent = parseInt(localStorage.getItem(OUTLINE_WIDTH_KEY)) || 20;
 
 toggleBtn.addEventListener('click', (event) => {
     event.stopPropagation();
     sidebar.classList.toggle('collapsed');
     toggleBtn.classList.toggle('active', !sidebar.classList.contains('collapsed'));
-    updatePositions();
+    const start = performance.now();
+    (function animatePositions() {
+        updatePositions();
+        if (performance.now() - start < 260) requestAnimationFrame(animatePositions);
+    })();
 });
 
 outlineToggleBtn.addEventListener('click', (event) => {
@@ -87,14 +105,18 @@ outlineToggleBtn.addEventListener('click', (event) => {
     }
 });
 
-outlineEye.addEventListener('click', () => {
-    outlineCollapsed = !outlineCollapsed;
-    outlinePanel.classList.toggle('outline-collapsed', outlineCollapsed);
-    if (outlineCollapsed) {
-        outlineEye.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
-    } else {
-        outlineEye.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
-    }
+outlineShrink.addEventListener('click', (e) => {
+    e.stopPropagation();
+    _outlineWidthPercent = Math.max(OUTLINE_WIDTH_MIN, _outlineWidthPercent - 3);
+    localStorage.setItem(OUTLINE_WIDTH_KEY, String(_outlineWidthPercent));
+    updatePositions();
+});
+
+outlineGrow.addEventListener('click', (e) => {
+    e.stopPropagation();
+    _outlineWidthPercent = Math.min(OUTLINE_WIDTH_MAX, _outlineWidthPercent + 3);
+    localStorage.setItem(OUTLINE_WIDTH_KEY, String(_outlineWidthPercent));
+    updatePositions();
 });
 
 function getScrollContainer(element) {
@@ -210,15 +232,15 @@ function updatePositions() {
     const rect = main.getBoundingClientRect();
 
     outlinePanel.style.left = `${Math.max(8, rect.left + 16)}px`;
+    outlineList.style.width = `${Math.max(120, Math.round(rect.width * _outlineWidthPercent / 100))}px`;
 
     const sidebarRight = Math.max(0, window.innerWidth - rect.right);
     sidebar.style.right = `${sidebarRight}px`;
 
-    if (sidebar.classList.contains('collapsed')) {
-        floatControls.style.right = `${sidebarRight + 16}px`;
-    } else {
-        floatControls.style.right = `${sidebarRight + 320 + 12}px`;
-    }
+    const sidebarWidth = sidebar.getBoundingClientRect().width;
+    floatControls.style.right = sidebarWidth < 1
+        ? `${sidebarRight + 16}px`
+        : `${sidebarRight + sidebarWidth + 12}px`;
 }
 
 window.addEventListener('resize', updatePositions);
@@ -353,6 +375,7 @@ function attachOutlineScroll() {
 // === Reactive refresh system (MutationObserver) ===
 
 let _mainObserver = null;
+let _resizeObserver = null;
 let _observedMain = null;
 let _refreshTimer = null;
 let _lastMessageCount = 0;
@@ -381,6 +404,7 @@ function connectObserver() {
     if (main === _observedMain && _mainObserver) return true;
 
     if (_mainObserver) _mainObserver.disconnect();
+    if (_resizeObserver) _resizeObserver.disconnect();
 
     _mainObserver = new MutationObserver(() => scheduleRefresh());
     _mainObserver.observe(main, {
@@ -388,6 +412,10 @@ function connectObserver() {
         subtree: true,
         characterData: true,
     });
+
+    _resizeObserver = new ResizeObserver(() => updatePositions());
+    _resizeObserver.observe(main);
+
     _observedMain = main;
     return true;
 }
@@ -397,11 +425,13 @@ function ensureConnection() {
         _lastUrl = location.href;
         _lastMessageCount = 0;
         if (_mainObserver) _mainObserver.disconnect();
+        if (_resizeObserver) _resizeObserver.disconnect();
         _observedMain = null;
     }
 
     if (_observedMain && !document.contains(_observedMain)) {
         if (_mainObserver) _mainObserver.disconnect();
+        if (_resizeObserver) _resizeObserver.disconnect();
         _observedMain = null;
     }
 
