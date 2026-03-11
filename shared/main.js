@@ -212,6 +212,18 @@
         floatControls.style.right = sidebarWidth < 1
             ? `${sidebarRight + 16}px`
             : `${sidebarRight + sidebarWidth + 12}px`;
+
+        // 跟随悬浮按钮更新已打开的设置面板位置
+        if (!outlineSettingsPanel.classList.contains('hidden')) {
+            const btnRect = outlineToggleBtn.getBoundingClientRect();
+            outlineSettingsPanel.style.top = `${btnRect.top - 40}px`;
+            outlineSettingsPanel.style.right = `${window.innerWidth - btnRect.left + 12}px`;
+        }
+        if (!formulaPanel.classList.contains('hidden')) {
+            const btnRect = formulaBtn.getBoundingClientRect();
+            formulaPanel.style.top = `${btnRect.top - 40}px`;
+            formulaPanel.style.right = `${window.innerWidth - btnRect.left + 12}px`;
+        }
     }
 
     window.addEventListener('resize', updatePositions);
